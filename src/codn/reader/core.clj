@@ -1,9 +1,6 @@
 (ns codn.reader.core
-  (:refer-clojure :exclude [read read-line read-string char
-                            ])
-  ;; (:use clojure.walk)
-  (:use codn.parser.reader-types
-        [codn.parser utils commons])
+  (:refer-clojure :exclude [read read-line read-string char])
+  (:require [codn.parser.utils :as utils])
   (:import (clojure.lang PersistentHashSet IMeta
                          RT Symbol Reflector Var IObj
                          PersistentVector IRecord Namespace)
@@ -186,11 +183,9 @@
     (keyword (str (resolve-ns (symbol (namespace kw)))) (name kw))
     (keyword (str *ns*) (name kw))))
 
-
-
 (defn make-expr [head body]
-  (condp = head
-    :nil nil
+  (condp #(cond (keyword? %1) (= %1 %2) (list? %1) ((set %1) %2)) head
+    :nil :nil
     :list (apply list body)
     :vector (vec body)
     :map (apply hash-map body)
@@ -208,14 +203,15 @@
     :autoresolved-keyword (read-autoresolved-keyword (first body))
     :regex (re-pattern (first body))
     :ratio (apply / body)
-    :meta (with-meta (second body) (desugar-meta (first body)))
+    :meta (with-meta (second body) (utils/desugar-meta (first body)))
+    '(:boolean :symbol :NaN :negative-infinity :positive-infinity) body
     (throw (Exception. (str "Unknown codn head: " head)))))
 
 
 (defn un-edn [x]
   (if (not (#{clojure.lang.PersistentArrayMap clojure.lang.PersistentHashMap} (class x)))
     x
-    (if (:value x)
+    (if (contains? x :value)
       (:value x)
       (make-expr (:head x) (:body x)))))
 
@@ -269,8 +265,6 @@
     (reset! fn-slots {}))
   x)
 
-
-
 (defn walk
   [inner outer form]
   (cond
@@ -293,8 +287,6 @@
 
 (defn read-codn [expr]
   (let [fn-slots (atom {})]
-    (prewalk
-     un-syntax-quote
-     (postwalk
-      #(un-fn-postwalk % fn-slots)
-      (postwalk un-edn expr)))))
+    (->> (postwalk un-edn expr)
+         (postwalk #(un-fn-postwalk % fn-slots))
+         (prewalk un-syntax-quote))))

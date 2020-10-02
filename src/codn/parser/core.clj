@@ -407,10 +407,9 @@
     \_ read-discard
     nil))
 
-
 (defn- read-tagged [rdr initch]
   (let [tag (parse rdr true nil false)]
-    (if-not (symbol? (:value tag))
+    (when-not (symbol? (:value tag))
       (reader-error rdr "Reader tag must be a symbol"))
     (if (.contains (name (:value tag)) ".")
       {:head :constructor :body [tag (parse rdr true nil true)]}
@@ -447,7 +446,7 @@
          (throw e)
          (throw (ex-info (.getMessage e)
                          (merge {:type :reader-exception}
-                                (if (indexing-reader? reader)
+                                (when (indexing-reader? reader)
                                   {:line (get-line-number reader)
                                    :column (get-column-number reader)}))
                          e)))))))
