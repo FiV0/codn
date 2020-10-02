@@ -1,6 +1,6 @@
 (ns ^{:doc "A clojure reader in clojure"
       :author "Bronsa"}
-  codn.parser.core
+    codn.parser.core
   (:refer-clojure :exclude [read read-line read-string char
                             default-data-readers *default-data-reader-fn*
                             *read-eval* *data-readers*])
@@ -67,36 +67,36 @@
 
 (defn- read-unicode-char
   ([^String token offset length base]
-     (let [l (+ offset length)]
-       (when-not (== (count token) l)
-         (throw (IllegalArgumentException. (str "Invalid unicode character: \\" token))))
-       (loop [i offset uc 0]
-         (if (== i l)
-           (char uc)
-           (let [d (Character/digit (int (nth token i)) (int base))]
-             (if (== d -1)
-               (throw (IllegalArgumentException. (str "Invalid digit: " (nth token i))))
-               (recur (inc i) (long (+ d (* uc base))))))))))
+   (let [l (+ offset length)]
+     (when-not (== (count token) l)
+       (throw (IllegalArgumentException. (str "Invalid unicode character: \\" token))))
+     (loop [i offset uc 0]
+       (if (== i l)
+         (char uc)
+         (let [d (Character/digit (int (nth token i)) (int base))]
+           (if (== d -1)
+             (throw (IllegalArgumentException. (str "Invalid digit: " (nth token i))))
+             (recur (inc i) (long (+ d (* uc base))))))))))
 
   ([rdr initch base length exact?]
-     (loop [i 1 uc (Character/digit (int initch) (int base))]
-       (if (== uc -1)
-         (throw (IllegalArgumentException. (str "Invalid digit: " initch)))
-         (if-not (== i length)
-           (let [ch (peek-char rdr)]
-             (if (or (whitespace? ch)
-                     (macros ch)
-                     (nil? ch))
-               (if exact?
-                 (throw (IllegalArgumentException.
-                         (str "Invalid character length: " i ", should be: " length)))
-                 (char uc))
-               (let [d (Character/digit (int ch) (int base))]
-                 (read-char rdr)
-                 (if (== d -1)
-                   (throw (IllegalArgumentException. (str "Invalid digit: " ch)))
-                   (recur (inc i) (long (+ d (* uc base))))))))
-           (char uc))))))
+   (loop [i 1 uc (Character/digit (int initch) (int base))]
+     (if (== uc -1)
+       (throw (IllegalArgumentException. (str "Invalid digit: " initch)))
+       (if-not (== i length)
+         (let [ch (peek-char rdr)]
+           (if (or (whitespace? ch)
+                   (macros ch)
+                   (nil? ch))
+             (if exact?
+               (throw (IllegalArgumentException.
+                       (str "Invalid character length: " i ", should be: " length)))
+               (char uc))
+             (let [d (Character/digit (int ch) (int base))]
+               (read-char rdr)
+               (if (== d -1)
+                 (throw (IllegalArgumentException. (str "Invalid digit: " ch)))
+                 (recur (inc i) (long (+ d (* uc base))))))))
+         (char uc))))))
 
 (def ^:private ^:const upper-limit (int \uD7ff))
 (def ^:private ^:const lower-limit (int \uE000))
@@ -110,36 +110,36 @@
         (let [result
               (cond
 
-          (== 1 token-len)  (Character/valueOf (nth token 0))
+                (== 1 token-len)  (Character/valueOf (nth token 0))
 
-          (= token "newline") \newline
-          (= token "space") \space
-          (= token "tab") \tab
-          (= token "backspace") \backspace
-          (= token "formfeed") \formfeed
-          (= token "return") \return
+                (= token "newline") \newline
+                (= token "space") \space
+                (= token "tab") \tab
+                (= token "backspace") \backspace
+                (= token "formfeed") \formfeed
+                (= token "return") \return
 
-          (.startsWith token "u")
-          (let [c (read-unicode-char token 1 4 16)
-                ic (int c)]
-            (if (and (> ic upper-limit)
-                     (< ic lower-limit))
-              (reader-error rdr "Invalid character constant: \\u" (Integer/toString ic 16))
-              c))
+                (.startsWith token "u")
+                (let [c (read-unicode-char token 1 4 16)
+                      ic (int c)]
+                  (if (and (> ic upper-limit)
+                           (< ic lower-limit))
+                    (reader-error rdr "Invalid character constant: \\u" (Integer/toString ic 16))
+                    c))
 
-          (.startsWith token "x")
-          (read-unicode-char token 1 2 16)
+                (.startsWith token "x")
+                (read-unicode-char token 1 2 16)
 
-          (.startsWith token "o")
-          (let [len (dec token-len)]
-            (if (> len 3)
-              (reader-error rdr "Invalid octal escape sequence length: " len)
-              (let [uc (read-unicode-char token 1 len 8)]
-                (if (> (int uc) 0377)
-                  (reader-error rdr "Octal escape sequence must be in range [0, 377]")
-                  uc))))
+                (.startsWith token "o")
+                (let [len (dec token-len)]
+                  (if (> len 3)
+                    (reader-error rdr "Invalid octal escape sequence length: " len)
+                    (let [uc (read-unicode-char token 1 len 8)]
+                      (if (> (int uc) 0377)
+                        (reader-error rdr "Octal escape sequence must be in range [0, 377]")
+                        uc))))
 
-          :else (reader-error rdr "Unsupported character: \\" token))]
+                :else (reader-error rdr "Unsupported character: \\" token))]
           {:head :character :value result}
           ))
       (reader-error rdr "EOF while reading character"))))
@@ -208,12 +208,12 @@
         (let [n (match-number s)]
           (if n
             (cond
-             ;;(decimal? n) {:head :decimal :value n}
-             (or (decimal? n) (float? n)) {:head :float :value n}
-             (integer? n) {:head :integer :value n}
-             (ratio? n) {:head :ratio :body [{:head :integer :value (numerator n)} {:head :integer :value (denominator n)}]}
-             )
-           (reader-error reader "Invalid number format [" s "]"))))
+              ;;(decimal? n) {:head :decimal :value n}
+              (or (decimal? n) (float? n)) {:head :float :value n}
+              (integer? n) {:head :integer :value n}
+              (ratio? n) {:head :ratio :body [{:head :integer :value (numerator n)} {:head :integer :value (denominator n)}]}
+              )
+            (reader-error reader "Invalid number format [" s "]"))))
       (recur (doto sb (.append ch)) (read-char reader)))))
 
 (defn- escape-char [sb rdr]
@@ -313,12 +313,12 @@
         (let [m (if (and line
                          (seq? o))
                   (assoc m :line line
-                           :column column)
+                         :column column)
                   m)]
           (if (instance? IObj o)
             {:head :meta :body [m o]}
             {:head :meta :body [m o]}))
-         {:head :meta :body [m o]}))))
+        {:head :meta :body [m o]}))))
 
 
 (defn- read-set
@@ -343,7 +343,7 @@
       {:head :fn :body [form]})))
 
 
- ;; should never hit this
+;; should never hit this
 
 (declare read-symbol)
 
@@ -389,7 +389,7 @@
             (.append sb ch )
             (when (identical? \\ ch)
               (let [ch (read-char rdr)]
-                (if (nil? ch)
+                (when (nil? ch)
                   (reader-error rdr "EOF while reading regex"))
                 (.append sb ch)))
             (recur (read-char rdr))))))))
@@ -428,29 +428,29 @@
   ([reader] (parse reader true nil))
   ([reader eof-error? sentinel] (parse reader eof-error? sentinel false))
   ([reader eof-error? sentinel recursive?]
-     (try
-       (let [ch (read-char reader)]
-         (cond
-          (whitespace? ch) (parse reader eof-error? sentinel recursive?)
-          (nil? ch) (if eof-error? (reader-error reader "EOF") sentinel)
-          (number-literal? reader ch) (read-number reader ch)
-          (comment-prefix? ch) (parse (read-comment reader ch) eof-error? sentinel recursive?)
-          :else (let [f (macros ch)]
-                  (if f
-                    (let [res (f reader ch)]
-                      (if (identical? res reader)
-                        (parse reader eof-error? sentinel recursive?)
-                        res))
-                    (read-symbol reader ch)))))
-       (catch Exception e
-         (if (ex-info? e)
-           (throw e)
-           (throw (ex-info (.getMessage e)
-                           (merge {:type :reader-exception}
-                                  (if (indexing-reader? reader)
-                                    {:line (get-line-number reader)
-                                     :column (get-column-number reader)}))
-                           e)))))))
+   (try
+     (let [ch (read-char reader)]
+       (cond
+         (whitespace? ch) (parse reader eof-error? sentinel recursive?)
+         (nil? ch) (if eof-error? (reader-error reader "EOF") sentinel)
+         (number-literal? reader ch) (read-number reader ch)
+         (comment-prefix? ch) (parse (read-comment reader ch) eof-error? sentinel recursive?)
+         :else (let [f (macros ch)]
+                 (if f
+                   (let [res (f reader ch)]
+                     (if (identical? res reader)
+                       (parse reader eof-error? sentinel recursive?)
+                       res))
+                   (read-symbol reader ch)))))
+     (catch Exception e
+       (if (ex-info? e)
+         (throw e)
+         (throw (ex-info (.getMessage e)
+                         (merge {:type :reader-exception}
+                                (if (indexing-reader? reader)
+                                  {:line (get-line-number reader)
+                                   :column (get-column-number reader)}))
+                         e)))))))
 
 (defn parse-string
   "Parses one object from the string s."

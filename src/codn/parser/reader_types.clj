@@ -1,7 +1,6 @@
-(ns
-  codn.parser.reader-types
+(ns codn.parser.reader-types
   (:refer-clojure :exclude [char read-line])
-  (:use codn.parser.utils)
+  (:require [codn.parser.utils :as utils :refer [char]])
   (:import clojure.lang.LineNumberingPushbackReader
            (java.io InputStream BufferedReader)))
 
@@ -80,7 +79,7 @@
   IPushbackReader
   (unread [reader ch]
     (when ch
-      (if (zero? buf-pos) (throw (RuntimeException. "Pushback buffer is full")))
+      (when (zero? buf-pos) (throw (RuntimeException. "Pushback buffer is full")))
       (update! buf-pos dec)
       (aset buf buf-pos ch))))
 
@@ -100,7 +99,7 @@
     (when-let [ch (read-char rdr)]
       (let [ch (normalize-newline rdr ch)]
         (set! prev line-start?)
-        (set! line-start? (newline? ch))
+        (set! line-start? (utils/newline? ch))
         (when line-start?
           (set! column 0)
           (update! line inc))
@@ -141,10 +140,8 @@
 (extend LineNumberingPushbackReader
   IndexingReader
   {:get-line-number (fn [rdr] (.getLineNumber ^LineNumberingPushbackReader rdr))
-   :get-column-number (compile-if >=clojure-1-5-alpha*?
-                        (fn [rdr]
-                          (.getColumnNumber ^LineNumberingPushbackReader rdr))
-                        (fn [rdr] 0))})
+   :get-column-number (fn [rdr]
+                        (.getColumnNumber ^LineNumberingPushbackReader rdr))})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Public API
@@ -164,14 +161,14 @@
 (defn string-reader
   "Creates a StringReader from a given string"
   ([^String s]
-     (StringReader. s (count s) 0)))
+   (StringReader. s (count s) 0)))
 
 (defn string-push-back-reader
   "Creates a PushbackReader from a given string"
   ([s]
-     (string-push-back-reader s 1))
+   (string-push-back-reader s 1))
   ([^String s buf-len]
-     (PushbackReader. (string-reader s) (object-array buf-len) buf-len buf-len)))
+   (PushbackReader. (string-reader s) (object-array buf-len) buf-len buf-len)))
 
 (defn input-stream-reader
   "Creates an InputStreamReader from an InputStream"
@@ -181,29 +178,30 @@
 (defn input-stream-push-back-reader
   "Creates a PushbackReader from a given InputStream"
   ([is]
-     (input-stream-push-back-reader is 1))
+   (input-stream-push-back-reader is 1))
   ([^InputStream is buf-len]
-     (PushbackReader. (input-stream-reader is) (object-array buf-len) buf-len buf-len)))
+   (PushbackReader. (input-stream-reader is) (object-array buf-len) buf-len buf-len)))
 
 (defn indexing-push-back-reader
   "Creates an IndexingPushbackReader from a given string or Reader"
   ([s-or-rdr]
-     (indexing-push-back-reader s-or-rdr 1))
+   (indexing-push-back-reader s-or-rdr 1))
   ([s-or-rdr buf-len]
-     (IndexingPushbackReader.
-      (if (string? s-or-rdr) (string-push-back-reader s-or-rdr buf-len) s-or-rdr) 0 1 true nil)))
+   (IndexingPushbackReader.
+    (if (string? s-or-rdr) (string-push-back-reader s-or-rdr buf-len) s-or-rdr) 0 1 true nil)))
 
 (defn read-line
   "Reads a line from the reader or from *in* if no reader is specified"
   ([] (read-line *in*))
   ([rdr]
-     (if (or (instance? LineNumberingPushbackReader rdr)
-             (instance? BufferedReader rdr))
-       (clojure.core/read-line rdr)
-       (loop [c (read-char rdr) s (StringBuilder.)]
-         (if (newline? c)
-           (str s)
-           (recur (read-char rdr) (.append s c)))))))
+   (if (or (instance? LineNumberingPushbackReader rdr)
+           (instance? BufferedReader rdr))
+     (binding [*in* rdr]
+       (clojure.core/read-line))
+     (loop [c (read-char rdr) s (StringBuilder.)]
+       (if (utils/newline? c)
+         (str s)
+         (recur (read-char rdr) (.append s c)))))))
 
 (defn reader-error
   "Throws an ExceptionInfo with the given message.

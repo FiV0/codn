@@ -1,7 +1,7 @@
 (ns codn.reader.core
   (:refer-clojure :exclude [read read-line read-string char
-                           ])
- ;; (:use clojure.walk)
+                            ])
+  ;; (:use clojure.walk)
   (:use codn.parser.reader-types
         [codn.parser utils commons])
   (:import (clojure.lang PersistentHashSet IMeta
@@ -38,9 +38,9 @@
       (let [item (first s)
             ret (conj! r
                        (cond
-                        (unquote? item)          (list 'clojure.core/list (second item))
-                        (unquote-splicing? item) (second item)
-                        :else                    (list 'clojure.core/list (syntax-quote* item))))]
+                         (unquote? item)          (list 'clojure.core/list (second item))
+                         (unquote-splicing? item) (second item)
+                         :else                    (list 'clojure.core/list (syntax-quote* item))))]
         (recur (next s) ret))
       (seq (persistent! r)))))
 
@@ -76,7 +76,7 @@
       (if-let [o ((ns-map *ns*) s)]
         (if (class? o)
           (symbol (.getName ^Class o))
-          (if (var? o)
+          (when (var? o)
             (symbol (-> ^Var o .ns .name name) (-> ^Var o .sym name))))
         (symbol (name (ns-name *ns*)) (name s))))))
 
@@ -104,53 +104,53 @@
 (defn- syntax-quote* [form]
   (->>
    (cond
-    (special-symbol? form) (list 'quote form)
+     (special-symbol? form) (list 'quote form)
 
-    (symbol? form)
-    (list 'quote
-          (if (namespace form)
-            (let [maybe-class ((ns-map *ns*)
-                               (symbol (namespace form)))]
-              (if (class? class)
-                (symbol (.getName ^Class maybe-class) (name form))
-                (resolve-symbol form)))
-            (let [sym (name form)]
-              (cond
-               (.endsWith sym "#")
-               (register-gensym form)
+     (symbol? form)
+     (list 'quote
+           (if (namespace form)
+             (let [maybe-class ((ns-map *ns*)
+                                (symbol (namespace form)))]
+               (if (class? class)
+                 (symbol (.getName ^Class maybe-class) (name form))
+                 (resolve-symbol form)))
+             (let [sym (name form)]
+               (cond
+                 (.endsWith sym "#")
+                 (register-gensym form)
 
-               (.startsWith sym ".")
-               form
+                 (.startsWith sym ".")
+                 form
 
-               (.endsWith sym ".")
-               (let [csym (symbol (subs sym 0 (dec (count sym))))]
-                 (symbol (.concat (name (resolve-symbol csym)) ".")))
-               :else (resolve-symbol form)))))
+                 (.endsWith sym ".")
+                 (let [csym (symbol (subs sym 0 (dec (count sym))))]
+                   (symbol (.concat (name (resolve-symbol csym)) ".")))
+                 :else (resolve-symbol form)))))
 
-  (syntax-quote? form) (read-syntax-quote* (second form))
-  (unquote? form) (second form)
-    (unquote-splicing? form) (throw (IllegalStateException. "splice not in list"))
+     (syntax-quote? form) (read-syntax-quote* (second form))
+     (unquote? form) (second form)
+     (unquote-splicing? form) (throw (IllegalStateException. "splice not in list"))
 
-    (coll? form)
-    (cond
-     (instance? IRecord form) form
-     (map? form) (syntax-quote-coll 'clojure.core/hash-map (flatten-map form))
-     (vector? form) (syntax-quote-coll 'clojure.core/vector form)
-     (set? form) (syntax-quote-coll 'clojure.core/hash-set form)
-     (or (seq? form) (list? form))
-     (let [seq (seq form)]
-       (if seq
-         (syntax-quote-coll nil seq)
-         '(clojure.core/list)))
-     :else (throw (UnsupportedOperationException. "Unknown Collection type")))
+     (coll? form)
+     (cond
+       (instance? IRecord form) form
+       (map? form) (syntax-quote-coll 'clojure.core/hash-map (flatten-map form))
+       (vector? form) (syntax-quote-coll 'clojure.core/vector form)
+       (set? form) (syntax-quote-coll 'clojure.core/hash-set form)
+       (or (seq? form) (list? form))
+       (let [seq (seq form)]
+         (if seq
+           (syntax-quote-coll nil seq)
+           '(clojure.core/list)))
+       :else (throw (UnsupportedOperationException. "Unknown Collection type")))
 
-    (or (keyword? form)
-        (number? form)
-        (char? form)
-        (string? form))
-    form
+     (or (keyword? form)
+         (number? form)
+         (char? form)
+         (string? form))
+     form
 
-    :else (list 'quote form))
+     :else (list 'quote form))
    (add-meta form)))
 
 (defn- read-syntax-quote*
@@ -166,7 +166,7 @@
       (f value)
       (if *default-data-reader-fn*
         (*default-data-reader-fn* value)
-        (throw (Exception. "No reader function for tag ") (name tag))))))
+        (throw (Exception. (str "No reader function for tag " (name tag))))))))
 
 
 (defn read-constructor [[class-name value]]
@@ -242,30 +242,30 @@
 (defn remap-arg [fn-slots arg]
   (let [s (get-slot ({'% '%1} arg arg))]
     (if (@fn-slots s)
-     (@fn-slots s)
-     (let [arg2 (garg2 s)] (swap! fn-slots assoc s arg2) arg2))))
+      (@fn-slots s)
+      (let [arg2 (garg2 s)] (swap! fn-slots assoc s arg2) arg2))))
 
 (defn build-fn-args [slots]
   (vec (concat
         (let [positional-slots (map first (dissoc slots :rest))]
-          (if (not (empty? positional-slots))
+          (if (seq positional-slots)
             (map #(slots % (garg2 %)) (range 1 (+ 1 (apply max positional-slots))))
             []))
         (if (slots :rest) ['& (slots :rest)] []))))
 
 (defn un-fn-postwalk [x fn-slots]
   (cond
-   (arg? x) (remap-arg fn-slots x)
-   (match-head? x 'read-fn)
-   (let [slots @fn-slots]
-     (list
-      'fn*
-      (build-fn-args slots)
+    (arg? x) (remap-arg fn-slots x)
+    (match-head? x 'read-fn)
+    (let [slots @fn-slots]
+      (list
+       'fn*
+       (build-fn-args slots)
        (second x)))
-   true x))
+    :else x))
 
 (defn un-fn-prewalk [x fn-slots]
-  (if (match-head? x 'read-fn)
+  (when (match-head? x 'read-fn)
     (reset! fn-slots {}))
   x)
 
@@ -274,14 +274,14 @@
 (defn walk
   [inner outer form]
   (cond
-   ;;(list? form) (outer (apply list (map inner form)))
-   (list? form) (outer (into (empty form) (reverse (map inner form))))
+    ;;(list? form) (outer (apply list (map inner form)))
+    (list? form) (outer (into (empty form) (reverse (map inner form))))
 
-   (instance? clojure.lang.IRecord form) (outer (read-constructor [(class form) (into {} (map inner form))]))
-   (instance? clojure.lang.IMapEntry form) (outer (vec (map inner form)))
-   (seq? form) (outer (doall (map inner form)))
-   (coll? form) (outer (into (empty form) (map inner form)))
-   :else (outer form)))
+    (instance? clojure.lang.IRecord form) (outer (read-constructor [(class form) (into {} (map inner form))]))
+    (instance? clojure.lang.IMapEntry form) (outer (vec (map inner form)))
+    (seq? form) (outer (doall (map inner form)))
+    (coll? form) (outer (into (empty form) (map inner form)))
+    :else (outer form)))
 
 (defn postwalk
   [f form]
@@ -296,5 +296,5 @@
     (prewalk
      un-syntax-quote
      (postwalk
-           #(un-fn-postwalk % fn-slots)
-           (postwalk un-edn expr)))))
+      #(un-fn-postwalk % fn-slots)
+      (postwalk un-edn expr)))))
