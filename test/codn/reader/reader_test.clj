@@ -66,19 +66,16 @@
   (is (= (java.util.UUID/fromString "550e8400-e29b-41d4-a716-446655440000")
          (parse-read-string "#uuid \"550e8400-e29b-41d4-a716-446655440000\"")))
   (is (= (java.util.UUID/fromString "550e8400-e29b-41d4-a716-446655440000")
-                  (parse-read-string "#uuid\"550e8400-e29b-41d4-a716-446655440000\"")))
+         (parse-read-string "#uuid\"550e8400-e29b-41d4-a716-446655440000\"")))
   (when *default-data-reader-fn*
     (let [my-unknown (fn [tag val] {:unknown-tag tag :value val})]
       (is (= {:unknown-tag 'foo :value 'bar}
              (binding [*default-data-reader-fn* my-unknown]
                (parse-read-string "#foo bar")))))))
 
-
 (defrecord bar [baz buz])
 
-
 (defrecord foo [])
-
 
 (deftest read-record
   (is (= (foo.)
