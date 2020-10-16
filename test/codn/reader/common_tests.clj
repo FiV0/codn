@@ -221,6 +221,7 @@
   (is (= "foo\u0194bar" (parse-read-string "\"foo\\u0194bar\"")))
   (is (= "fooabar" (parse-read-string "\"foo\\x61bar\""))) ;; the clojure reader can't read this
   (is (= "foo\123bar" (parse-read-string "\"foo\\123bar\""))))
+;;TODO look at remaining tests here clojure.tools.reader
 
 (deftest read-list
   (is (= '() (parse-read-string "()")))
@@ -247,3 +248,7 @@
   (is (= {:foo 'bar} (meta (parse-read-string "^{:foo bar} 'baz"))))
   (is (= {:tag "foo"} (meta (parse-read-string "^\"foo\" 'bar"))))
   (is (= {:tag 'String} (meta (parse-read-string "^String 'x")))))
+
+;; (deftest read-namespaced-map
+;;   (is (= {:foo/bar 1 :baz 2} (read-string "#:foo{:bar 1 :_/baz 2}")))
+;;   (is (= '{foo/bar 1 :baz 2} (read-string "#:foo{bar 1 :_/baz 2}"))))

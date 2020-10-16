@@ -65,3 +65,54 @@
   (is (= '{:head :constructor, :body [{:head :symbol, :value clojure.tools.reader_test.bar} {:head :map, :body [{:head :keyword, :value :baz} {:head :integer, :value 1}]}]} (parse-string "#clojure.tools.reader_test.bar{:baz 1}")))
   (is (= '{:head :constructor, :body [{:head :symbol, :value clojure.tools.reader_test.bar} {:head :vector, :body [{:head :integer, :value 1} {:head :nil, :value nil}]}]} (parse-string "#clojure.tools.reader_test.bar[1 nil]")))
   (is (= '{:head :constructor, :body [{:head :symbol, :value clojure.tools.reader_test.bar} {:head :vector, :body [{:head :integer, :value 1} {:head :integer, :value 2}]}]} (parse-string "#clojure.tools.reader_test.bar[1 2]"))))
+
+(deftest reader-conditionals
+  (is (= {:head :reader-conditional,
+          :body
+          {:head :list,
+           :body
+           [{:head :keyword, :value :clj}
+            {:head :integer, :value 1}
+            {:head :keyword, :value :cljs}
+            {:head :integer, :value 2}]},
+          :splicing? false}
+         (parse-string "#?(:clj 1 :cljs 2)")))
+
+  (is (= {:head :reader-conditional,
+          :body
+          {:head :list,
+           :body
+           [{:head :keyword, :value :clj}
+            {:head :vector,
+             :body
+             [{:head :integer, :value 1}
+              {:head :integer, :value 2}
+              {:head :integer, :value 3}]}
+            {:head :keyword, :value :cljs}
+            {:head :vector,
+             :body
+             [{:head :integer, :value 1}
+              {:head :integer, :value 2}
+              {:head :integer, :value 3}]}]},
+          :splicing? true}
+         (parse-string "#?@(:clj [1 2 3] :cljs [1 2 3])")))
+
+  (is (= {:head :vector,
+          :body
+          [{:head :reader-conditional,
+            :body
+            {:head :list,
+             :body
+             [{:head :keyword, :value :clj}
+              {:head :vector,
+               :body
+               [{:head :keyword, :value :a}
+                {:head :reader-conditional,
+                 :body
+                 {:head :list,
+                  :body
+                  [{:head :keyword, :value :clj}
+                   {:head :vector, :body [{:head :keyword, :value :b}]}]},
+                 :splicing? true}]}]},
+            :splicing? true}]}
+         (parse-string "[#?@(:clj [:a #?@(:clj [:b])])]"))))

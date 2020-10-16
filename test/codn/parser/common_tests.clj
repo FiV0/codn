@@ -249,3 +249,7 @@
   (is (= '{:head :meta, :body [{:head :map, :body [{:head :keyword, :value :foo} {:head :symbol, :value bar}]} {:head :quote, :body [{:head :symbol, :value baz}]}]} (parse-string "^{:foo bar} 'baz")))
   (is (= '{:head :meta, :body [{:head :string, :value "foo"} {:head :quote, :body [{:head :symbol, :value bar}]}]} (parse-string "^\"foo\" 'bar")))
   (is (= '{:head :meta, :body [{:head :symbol, :value String} {:head :quote, :body [{:head :symbol, :value x}]}]} (parse-string "^String 'x"))))
+
+;; (deftest read-namespaced-map
+;;   (is (= {:foo/bar 1 :baz 2} (read-string "#:foo{:bar 1 :_/baz 2}")))
+;;   (is (= '{foo/bar 1 :baz 2} (read-string "#:foo{bar 1 :_/baz 2}"))))
