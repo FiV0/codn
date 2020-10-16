@@ -93,5 +93,8 @@
   (is (= (toto. 1 2 3 4 5 6 7 8 9)
          (parse-read-string "#codn.reader.reader_test.toto{:a 1, :b 2, :c 3, :d 4, :e 5, :f 6, :g 7, :h 8, :i 9}"))))
 
+(deftest read-ctor
+  (is (= "foo" (parse-read-string "#java.lang.String[\"foo\"]"))))
+
 (deftest read-booleans
   (is (= '(if nil true false) (parse-read-string "(if nil true false)"))))

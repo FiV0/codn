@@ -337,6 +337,27 @@
       NaN {:head :NaN :value Double/NaN}
       (reader-error rdr (str "Invalid token: ##" value)))))
 
+(defn- read-cond
+  [rdr _]
+  ;; (when (not (and opts (#{:allow :preserve} (:read-cond opts))))
+  ;;   (throw (RuntimeException. "Conditional read not allowed")))
+  (if-let [ch (read-char rdr)]
+    (let [splicing (= ch \@)
+          ch (if splicing (read-char rdr) ch)]
+      ;; (when splicing
+      ;;   (when-not *read-delim*
+      ;;     (err/reader-error rdr "cond-splice not in list")))
+      (if-let [ch (if (whitespace? ch) (read-past whitespace? rdr) ch)]
+        (if (not= ch \()
+          (throw (RuntimeException. "read-cond body must be a list"))
+          ;; (binding [*suppress-read* (or *suppress-read* (= :preserve (:read-cond opts)))]
+          ;;   (if *suppress-read*
+          ;;     (reader-conditional (read-list rdr ch opts pending-forms) splicing)
+          ;;     (read-cond-delimited rdr splicing opts pending-forms)))
+          {:head :reader-conditional :body (read-list rdr ch) :splicing? splicing})
+        (reader-error rdr "Unexpected EOF while reading character.")))
+    (reader-error rdr "Unexpected EOF while reading character.")))
+
 (def ^:private ^:dynamic arg-env)
 
 
@@ -382,9 +403,8 @@
     \# read-dispatch
     nil))
 
-
 (defn read-regex2
-  [rdr ch]
+  [rdr _]
   (let [sb (StringBuilder.)]
     (loop [ch (read-char rdr)]
       (if (identical? \" ch)
@@ -411,7 +431,7 @@
     \" read-regex2
     \! read-comment
     \_ read-discard
-    ;; \? read-cond
+    \? read-cond
     ;; \: read-namespaced-map
     \# read-symbolic-value
     nil))

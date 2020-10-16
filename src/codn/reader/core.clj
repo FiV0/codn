@@ -209,7 +209,7 @@
     (keyword (str (resolve-ns (symbol (namespace kw)))) (name kw))
     (keyword (str *ns*) (name kw))))
 
-(defn make-expr [head body]
+(defn make-expr [{:keys [head body] :as codn}]
   (condp #(cond (keyword? %1) (= %1 %2) (list? %1) ((set %1) %2)) head
     :nil :nil
     :list (apply list body)
@@ -231,6 +231,7 @@
     :ratio (apply / body)
     :meta (with-meta (second body) (utils/desugar-meta (first body)))
     '(:boolean :symbol :NaN :negative-infinity :positive-infinity) body
+    :reader-conditional (reader-conditional body (:splicing? codn))
     (throw (Exception. (str "Unknown codn head: " head)))))
 
 
@@ -239,7 +240,7 @@
     x
     (if (contains? x :value)
       (:value x)
-      (make-expr (:head x) (:body x)))))
+      (make-expr x))))
 
 (defn un-syntax-quote [x]
   (if (syntax-quote? x) (read-syntax-quote* x) x))
