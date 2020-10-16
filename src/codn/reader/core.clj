@@ -6,6 +6,16 @@
                          PersistentVector IRecord Namespace)
            java.lang.reflect.Constructor))
 
+(defn reader-error
+  "Throws an ExceptionInfo with the given message."
+  [msg]
+  (throw (ex-info (apply str msg)
+                  (merge {:type :codn-reader-exception}
+                         ;; (when (indexing-reader? rdr)
+                         ;;   {:line (get-line-number rdr)
+                         ;;    :column (get-column-number rdr)})
+                         ))))
+
 (defn- resolve-ns [sym]
   (or ((ns-aliases *ns*) sym)
       (find-ns sym)))
@@ -165,18 +175,34 @@
         (*default-data-reader-fn* value)
         (throw (Exception. (str "No reader function for tag " (name tag))))))))
 
-
-(defn read-constructor [[class-name value]]
-
-  (RT/baseLoader)
-  (let [ class (if (class? class-name) class-name (Class/forName (name class-name) ))]
-    (if (vector? value)
-      (do  (def xxx [class value])
-           (Reflector/invokeConstructor class (to-array value)))
-      (if (map? value )
-        (Reflector/invokeStaticMethod class "create" (object-array [value]))
-        (throw (Exception. "constructor value not a vector or map."))))))
-
+(defn- read-ctor [[class entries]]
+  (let [class (cond (symbol? class) (Class/forName (name class) false (RT/baseLoader))
+                    (class? class) class)]
+    (if-let [form (cond (vector? entries) :short
+                        (map? entries) :extended
+                        :else nil)]
+      (let [numargs (count entries)
+            all-ctors (.getConstructors class)
+            ctors-num (count all-ctors)]
+        (case form
+          :short
+          (loop [i 0]
+            (if (>= i ctors-num)
+              (reader-error (str "Unexpected number of constructor arguments to " (str class)
+                                 ": got" numargs))
+              (if (== (count (.getParameterTypes ^Constructor (aget all-ctors i)))
+                      numargs)
+                (Reflector/invokeConstructor class (to-array entries))
+                (recur (inc i)))))
+          :extended
+          (let [vals entries]
+            (loop [s (keys vals)]
+              (when s
+                (if-not (keyword? (first s))
+                  (reader-error "Unreadable ctor form: key must be of type clojure.lang.Keyword")
+                  (recur (next s)))))
+            (Reflector/invokeStaticMethod class "create" (object-array [vals])))))
+      (reader-error "Invalid reader constructor form"))))
 
 (defn read-autoresolved-keyword [kw]
   (if (namespace kw)
@@ -199,7 +225,7 @@
     :syntax-quote (list 'read-syntax-quote* (first body))
     :read-eval (eval (first body))
     :tagged-literal (read-tagged-literal body)
-    :constructor (read-constructor body)
+    :constructor (read-ctor body)
     :autoresolved-keyword (read-autoresolved-keyword (first body))
     :regex (re-pattern (first body))
     :ratio (apply / body)
@@ -216,7 +242,7 @@
       (make-expr (:head x) (:body x)))))
 
 (defn un-syntax-quote [x]
-  (if ( syntax-quote? x) (read-syntax-quote* x) x))
+  (if (syntax-quote? x) (read-syntax-quote* x) x))
 
 
 (defn get-slot [s]
@@ -270,8 +296,7 @@
   (cond
     ;;(list? form) (outer (apply list (map inner form)))
     (list? form) (outer (into (empty form) (reverse (map inner form))))
-
-    (instance? clojure.lang.IRecord form) (outer (read-constructor [(class form) (into {} (map inner form))]))
+    (instance? clojure.lang.IRecord form) (outer (read-ctor [(class form) (into {} (map inner form))]))
     (instance? clojure.lang.IMapEntry form) (outer (vec (map inner form)))
     (seq? form) (outer (doall (map inner form)))
     (coll? form) (outer (into (empty form) (map inner form)))

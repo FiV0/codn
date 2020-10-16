@@ -77,6 +77,8 @@
 
 (defrecord foo [])
 
+(defrecord toto [a b c d e f g h i]) ;; clojure passes to non linear map representation at 8 entries
+
 (deftest read-record
   (is (= (foo.)
          (parse-read-string "#codn.reader.reader_test.foo[]")))
@@ -87,4 +89,10 @@
   (is (= (map->bar {}) (parse-read-string "#codn.reader.reader_test.bar{}")))
   (is (= (bar. 1 nil) (parse-read-string "#codn.reader.reader_test.bar{:baz 1}")))
   (is (= (bar. 1 nil) (parse-read-string "#codn.reader.reader_test.bar[1 nil]")))
-  (is (= (bar. 1 2) (parse-read-string "#codn.reader.reader_test.bar[1 2]"))))
+  (is (= (bar. 1 2) (parse-read-string "#codn.reader.reader_test.bar[1 2]")))
+
+  (is (= (toto. 1 2 3 4 5 6 7 8 9)
+         (parse-read-string "#codn.reader.reader_test.toto{:a 1, :b 2, :c 3, :d 4, :e 5, :f 6, :g 7, :h 8, :i 9}"))))
+
+(deftest read-booleans
+  (is (= '(if nil true false) (parse-read-string "(if nil true false)"))))
