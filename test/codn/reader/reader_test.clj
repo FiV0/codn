@@ -1,7 +1,7 @@
 (ns codn.reader.reader-test
-  (:use [codn.reader.core :only [read-codn]]
-        [codn.parser.core :only [parse-string]]
-        [clojure.test :only [deftest is]])
+  (:require [codn.reader.core :refer [read-codn]]
+            [codn.parser.core :refer [parse-string]]
+            [clojure.test :refer [deftest is]])
   (:import clojure.lang.BigInt))
 
 (defn parse-read-string [x]
@@ -35,7 +35,7 @@
   (is (= '`user/foo (binding [*ns* (the-ns 'user)]
                       (parse-read-string "`foo"))))
   (is (= '`+ (parse-read-string "`+")))
-  (is (= '`foo/bar (parse-read-string "`foo/bar")))
+  (is (= '`foo/bar (parse-read-string "`codn.reader.reader_test.foo/bar")))
   (is (= '`1 (parse-read-string "`1")))
   (is (= '`(1 (~2 ~@(3))) (parse-read-string "`(1 (~2 ~@(3)))"))))
 
@@ -80,8 +80,7 @@
 (defrecord toto [a b c d e f g h i]) ;; clojure passes to non linear map representation at 8 entries
 
 (deftest read-record
-  (is (= (foo.)
-         (parse-read-string "#codn.reader.reader_test.foo[]")))
+  (is (= (foo.) (parse-read-string "#codn.reader.reader_test.foo[]")))
   (is (= (foo.) (parse-read-string "#codn.reader.reader_test.foo []"))) ;; not valid in clojure
   (is (= (foo.) (parse-read-string "#codn.reader.reader_test.foo{}")))
   (is (= (assoc (foo.) :foo 'bar) (parse-read-string "#codn.reader.reader_test.foo{:foo bar}")))
