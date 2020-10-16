@@ -4,8 +4,9 @@
   (:refer-clojure :exclude [read read-line read-string char
                             default-data-readers *default-data-reader-fn*
                             *read-eval* *data-readers*])
-  (:use codn.parser.reader-types
-        [codn.parser utils commons])
+  (:require [codn.parser.reader-types :refer :all]
+            [codn.parser.utils :refer :all]
+            [codn.parser.commons :refer :all])
   (:import (clojure.lang PersistentHashSet IMeta
                          RT Symbol Reflector Var IObj
                          PersistentVector IRecord Namespace)
@@ -264,10 +265,6 @@
         "true" {:head :boolean :value true}
         "false" {:head :boolean :value false}
         "/"  {:head :symbol :value '/}
-        "NaN" {:head :NaN :value Double/NaN}
-        "-Infinity" {:head :negative-infinity :value Double/NEGATIVE_INFINITY}
-        ("Infinity" "+Infinity") {:head :positive-infinity :value Double/POSITIVE_INFINITY}
-
         (or (when-let [p (parse-symbol token)]
               (with-meta {:head :symbol :value (symbol (p 0) (p 1))}
                 (when line
@@ -330,6 +327,15 @@
   [rdr _]
   (parse rdr true nil true)
   rdr)
+
+(defn- read-symbolic-value
+  [rdr _ ]
+  (let [{:keys [value]} (parse rdr true nil true)]
+    (case value
+      Inf  {:head :positive-infinity :value Double/POSITIVE_INFINITY}
+      -Inf {:head :negative-infinity :value Double/NEGATIVE_INFINITY}
+      NaN {:head :NaN :value Double/NaN}
+      (reader-error rdr (str "Invalid token: ##" value)))))
 
 (def ^:private ^:dynamic arg-env)
 
@@ -405,6 +411,9 @@
     \" read-regex2
     \! read-comment
     \_ read-discard
+    ;; \? read-cond
+    ;; \: read-namespaced-map
+    \# read-symbolic-value
     nil))
 
 (defn- read-tagged [rdr initch]

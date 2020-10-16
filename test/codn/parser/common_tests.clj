@@ -190,10 +190,11 @@
   (is (= '{:head :symbol, :value abc:def/ghi:jkl.mno} (parse-string "abc:def/ghi:jkl.mno")))
   (is (instance? clojure.lang.Symbol (:value (parse-string "alphabet"))))
   (is (= "foo//" (str (:value (parse-string "foo//"))))) ;; the clojure reader can't read this
-  (is (= (str 'NaN) (str (:value (parse-string "NaN"))))) ;; the clojure reader can't read this
-  (is (= {:head :positive-infinity, :value Double/POSITIVE_INFINITY}  (parse-string "Infinity"))) ;; the clojure reader can't read this
-  (is (= {:head :positive-infinity, :value Double/POSITIVE_INFINITY}  (parse-string "+Infinity"))) ;; the clojure reader can't read this
-  (is (= {:head :negative-infinity, :value Double/NEGATIVE_INFINITY}  (parse-string "-Infinity")))) ;; the clojure reader can't read this
+  (let [{:keys [head value]} (parse-string "##NaN")]
+    (is (= head :NaN))
+    (is (Double/isNaN value)))
+  (is (= {:head :positive-infinity, :value Double/POSITIVE_INFINITY}  (parse-string "##Inf")))
+  (is (= {:head :negative-infinity, :value Double/NEGATIVE_INFINITY}  (parse-string "##-Inf"))))
 
 (deftest read-specials
   (is (= '{:head :nil, :value nil} (parse-string "nil")))

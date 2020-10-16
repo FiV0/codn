@@ -64,5 +64,4 @@
   (is (= '{:head :constructor, :body [{:head :symbol, :value clojure.tools.reader_test.bar} {:head :map, :body []}]} (parse-string "#clojure.tools.reader_test.bar{}")))
   (is (= '{:head :constructor, :body [{:head :symbol, :value clojure.tools.reader_test.bar} {:head :map, :body [{:head :keyword, :value :baz} {:head :integer, :value 1}]}]} (parse-string "#clojure.tools.reader_test.bar{:baz 1}")))
   (is (= '{:head :constructor, :body [{:head :symbol, :value clojure.tools.reader_test.bar} {:head :vector, :body [{:head :integer, :value 1} {:head :nil, :value nil}]}]} (parse-string "#clojure.tools.reader_test.bar[1 nil]")))
-  (is (= '{:head :constructor, :body [{:head :symbol, :value clojure.tools.reader_test.bar} {:head :vector, :body [{:head :integer, :value 1} {:head :integer, :value 2}]}]}
- (parse-string "#clojure.tools.reader_test.bar[1 2]"))))
+  (is (= '{:head :constructor, :body [{:head :symbol, :value clojure.tools.reader_test.bar} {:head :vector, :body [{:head :integer, :value 1} {:head :integer, :value 2}]}]} (parse-string "#clojure.tools.reader_test.bar[1 2]"))))
