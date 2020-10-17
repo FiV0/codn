@@ -98,3 +98,11 @@
 
 (deftest read-booleans
   (is (= '(if nil true false) (parse-read-string "(if nil true false)"))))
+
+(deftest reader-conditionals
+  (is (= (reader-conditional '(:clj 1 :cljs 2) false) (parse-read-string "#?(:clj 1 :cljs 2)")))
+
+  (is (= (reader-conditional '(:clj [1 2 3] :cljs [1 2 3]) true ) (parse-read-string "#?@(:clj [1 2 3] :cljs [1 2 3])")))
+
+  (is (= [(reader-conditional (list :clj [:a (reader-conditional '(:clj [:b]) true )]) true)]
+         (parse-read-string "[#?@(:clj [:a #?@(:clj [:b])])]"))))

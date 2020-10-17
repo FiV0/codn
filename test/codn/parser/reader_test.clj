@@ -115,4 +115,20 @@
                    {:head :vector, :body [{:head :keyword, :value :b}]}]},
                  :splicing? true}]}]},
             :splicing? true}]}
-         (parse-string "[#?@(:clj [:a #?@(:clj [:b])])]"))))
+         (parse-string "[#?@(:clj [:a #?@(:clj [:b])])]")))
+
+  (is (= {:head :reader-conditional,
+          :body
+          {:head :list,
+           :body
+           [{:head :keyword, :value :cljs}
+            {:head :tagged-literal,
+             :body
+             [{:head :symbol, :value 'js}
+              {:head :vector,
+               :body
+               [{:head :integer, :value 1}
+                {:head :integer, :value 2}
+                {:head :integer, :value 3}]}]}]},
+          :splicing? false}
+         (parse-string "#?(:cljs #js [1 2 3])"))))
