@@ -117,18 +117,52 @@
             :splicing? true}]}
          (parse-string "[#?@(:clj [:a #?@(:clj [:b])])]")))
 
-  (is (= {:head :reader-conditional,
-          :body
-          {:head :list,
+  (is (= '{:head :reader-conditional,
            :body
-           [{:head :keyword, :value :cljs}
-            {:head :tagged-literal,
-             :body
-             [{:head :symbol, :value 'js}
-              {:head :vector,
-               :body
-               [{:head :integer, :value 1}
-                {:head :integer, :value 2}
-                {:head :integer, :value 3}]}]}]},
-          :splicing? false}
+           {:head :list,
+            :body
+            [{:head :keyword, :value :cljs}
+             {:head :tagged-literal,
+              :body
+              [{:head :symbol, :value js}
+               {:head :vector,
+                :body
+                [{:head :integer, :value 1}
+                 {:head :integer, :value 2}
+                 {:head :integer, :value 3}]}]}]},
+           :splicing? false}
          (parse-string "#?(:cljs #js [1 2 3])"))))
+
+
+(alias 'c.c 'clojure.core)
+
+(deftest read-namespaced-map
+  (binding [*ns* (the-ns 'codn.parser.reader-test)]
+    (is (= '{:head :namespaced-map,
+             :body
+             [{:head :symbol, :value codn.parser.reader-test}
+              {:head :keyword, :value :foo}
+              {:head :integer, :value 1}]}
+           (parse-string "#::{:foo 1}")))
+    (is (= '{:head :namespaced-map,
+             :body
+             [{:head :symbol, :value codn.parser.reader-test}
+              {:head :keyword, :value :foo}
+              {:head :integer, :value 1}
+              {:head :keyword, :value :_/bar}
+              {:head :integer, :value 2}]}
+           (parse-string "#::{:foo 1 :_/bar 2}")))
+    (is (= '{:head :namespaced-map,
+             :body
+             [{:head :symbol, :value a}
+              {:head :keyword, :value :foo}
+              {:head :integer, :value 1}
+              {:head :keyword, :value :_/bar}
+              {:head :integer, :value 2}]}
+           (parse-string "#:a{:foo 1 :_/bar 2}")))
+    (is (= '{:head :namespaced-map,
+             :body
+             [{:head :symbol, :value clojure.core}
+              {:head :keyword, :value :foo}
+              {:head :integer, :value 2}]}
+           (parse-string "#::c.c{:foo 2}")))))

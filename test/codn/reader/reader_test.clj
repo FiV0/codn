@@ -35,7 +35,7 @@
   (is (= '`user/foo (binding [*ns* (the-ns 'user)]
                       (parse-read-string "`foo"))))
   (is (= '`+ (parse-read-string "`+")))
-  (is (= '`foo/bar (parse-read-string "`codn.reader.reader_test.foo/bar")))
+  (is (= '`foo/bar (parse-read-string "`foo/bar")))
   (is (= '`1 (parse-read-string "`1")))
   (is (= '`(1 (~2 ~@(3))) (parse-read-string "`(1 (~2 ~@(3)))"))))
 
@@ -106,3 +106,12 @@
 
   (is (= [(reader-conditional (list :clj [:a (reader-conditional '(:clj [:b]) true )]) true)]
          (parse-read-string "[#?@(:clj [:a #?@(:clj [:b])])]"))))
+
+(alias 'c.c 'clojure.core)
+
+(deftest read-namespaced-map
+  (binding [*ns* (the-ns 'codn.reader.reader-test)]
+    (is (= {::foo 1} (parse-read-string "#::{:foo 1}")))
+    (is (= {::foo 1 :bar 2} (parse-read-string "#::{:foo 1 :_/bar 2}")))
+    (is (= {:a/foo 1 :bar 2} (parse-read-string "#:a{:foo 1 :_/bar 2}")))
+    (is (= {:clojure.core/foo 2} (parse-read-string "#::c.c{:foo 2}")))))

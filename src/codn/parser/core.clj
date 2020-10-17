@@ -382,6 +382,29 @@
       ((wrapping-reader2 :unquote-splicing) (doto rdr read-char) \@)
       ((wrapping-reader2 :unquote) rdr \~))))
 
+(defn- read-namespaced-map
+  [rdr _]
+  (let [token (read-token rdr (read-char rdr))]
+    (if-let [ns (cond
+                  (= token ":")
+                  (ns-name *ns*)
+
+                  (= \: (first token))
+                  (some-> token (subs 1) parse-symbol second' symbol resolve-ns ns-name)
+
+                  :else
+                  (some-> token parse-symbol second' symbol))]
+
+      (let [ch (read-past whitespace? rdr)]
+        (if (identical? ch \{)
+          (let [items (read-delimited \} rdr true)]
+            (when (odd? (count items))
+              (reader-error "Map literals must contain an even number of forms."))
+            {:head :namespaced-map
+             :body (into [{:head :symbol :value ns}] items)})
+          (reader-error (str "Namespaced map with namespace " token " does not specify a map."))))
+      (reader-error (str "Namespaced map with namespace " token " does not specify a map.")))))
+
 
 (defn- macros [ch]
   (case ch
@@ -432,7 +455,7 @@
     \! read-comment
     \_ read-discard
     \? read-cond
-    ;; \: read-namespaced-map
+    \: read-namespaced-map
     \# read-symbolic-value
     nil))
 

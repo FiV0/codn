@@ -209,6 +209,11 @@
     (keyword (str (resolve-ns (symbol (namespace kw)))) (name kw))
     (keyword (str *ns*) (name kw))))
 
+(defn- read-namespaced-map [[ns & items]]
+  (let [keys (take-nth 2 items)
+        vals (take-nth 2 (rest items))]
+    (apply hash-map (mapcat list (utils/namespace-keys (str ns) keys) vals))))
+
 (defn make-expr [{:keys [head body] :as codn}]
   (condp #(cond (keyword? %1) (= %1 %2) (list? %1) ((set %1) %2)) head
     :nil :nil
@@ -232,6 +237,7 @@
     :meta (with-meta (second body) (utils/desugar-meta (first body)))
     '(:boolean :symbol :NaN :negative-infinity :positive-infinity) body
     :reader-conditional (reader-conditional body (:splicing? codn))
+    :namespaced-map (read-namespaced-map body)
     (throw (Exception. (str "Unknown codn head: " head)))))
 
 

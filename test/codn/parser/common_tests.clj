@@ -250,6 +250,21 @@
   (is (= '{:head :meta, :body [{:head :string, :value "foo"} {:head :quote, :body [{:head :symbol, :value bar}]}]} (parse-string "^\"foo\" 'bar")))
   (is (= '{:head :meta, :body [{:head :symbol, :value String} {:head :quote, :body [{:head :symbol, :value x}]}]} (parse-string "^String 'x"))))
 
-;; (deftest read-namespaced-map
-;;   (is (= {:foo/bar 1 :baz 2} (read-string "#:foo{:bar 1 :_/baz 2}")))
-;;   (is (= '{foo/bar 1 :baz 2} (read-string "#:foo{bar 1 :_/baz 2}"))))
+(deftest read-namespaced-map
+  (is (= {:head :namespaced-map,
+          :body
+          [{:head :string, :value "foo"}
+           {:head :keyword, :value :bar}
+           {:head :integer, :value 1}
+           {:head :keyword, :value :_/baz}
+           {:head :integer, :value 2}]}
+         (parse-string "#:foo{:bar 1 :_/baz 2}")))
+  (is (=
+       '{:head :namespaced-map,
+         :body
+         [{:head :string, :value "foo"}
+          {:head :symbol, :value bar}
+          {:head :integer, :value 1}
+          {:head :keyword, :value :_/baz}
+          {:head :integer, :value 2}]}
+       (parse-string "#:foo{bar 1 :_/baz 2}"))))
