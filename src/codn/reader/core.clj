@@ -205,31 +205,32 @@
     (apply hash-map (mapcat list (utils/namespace-keys (str ns) keys) vals))))
 
 (defn make-expr [{:keys [head body] :as codn}]
-  (condp #(cond (keyword? %1) (= %1 %2) (list? %1) ((set %1) %2)) head
-    :nil :nil
-    :list (apply list body)
-    :vector (vec body)
-    :map (apply hash-map body)
-    :set (set body)
-    :fn (list 'read-fn (first body))
-    :deref (list 'clojure.core/deref (first body))
-    :var-quote (list 'var (first body))
-    :quote (list 'quote (first body))
-    :unquote (list 'clojure.core/unquote (first body))
-    :unquote-splicing (list 'clojure.core/unquote-splicing (first body))
-    :syntax-quote (list 'read-syntax-quote* (first body))
-    :read-eval (eval (first body))
-    :tagged-literal (read-tagged-literal body)
-    :constructor (read-ctor body)
-    :autoresolved-keyword (read-autoresolved-keyword (first body))
-    :regex (re-pattern (first body))
-    :ratio (apply / body)
-    :meta (with-meta (second body) (utils/desugar-meta (first body)))
-    '(:boolean :symbol :NaN :negative-infinity :positive-infinity) body
-    :reader-conditional (reader-conditional body (:splicing? codn))
-    :namespaced-map (read-namespaced-map body)
-    (throw (Exception. (str "Unknown codn head: " head)))))
-
+  (let [res (condp #(cond (keyword? %1) (= %1 %2) (list? %1) ((set %1) %2)) head
+              :nil :nil
+              :list (apply list body)
+              :vector (vec body)
+              :map (apply hash-map body)
+              :set (set body)
+              :fn (list 'read-fn (first body))
+              :deref (list 'clojure.core/deref (first body))
+              :var-quote (list 'var (first body))
+              :quote (list 'quote (first body))
+              :unquote (list 'clojure.core/unquote (first body))
+              :unquote-splicing (list 'clojure.core/unquote-splicing (first body))
+              :syntax-quote (list 'read-syntax-quote* (first body))
+              :read-eval (eval (first body))
+              :tagged-literal (read-tagged-literal body)
+              :constructor (read-ctor body)
+              :autoresolved-keyword (read-autoresolved-keyword (first body))
+              :regex (re-pattern (first body))
+              :ratio (apply / body)
+              :meta (with-meta (second body) (utils/desugar-meta (first body)))
+              '(:boolean :symbol :NaN :negative-infinity :positive-infinity) body
+              :reader-conditional (reader-conditional body (:splicing? codn))
+              :namespaced-map (read-namespaced-map body)
+              (throw (Exception. (str "Unknown codn head: " head))))]
+    (cond-> res
+      (and (meta codn) (instance? clojure.lang.IObj res)) (with-meta (meta codn)))))
 
 (defn un-edn [x]
   (if (not (#{clojure.lang.PersistentArrayMap clojure.lang.PersistentHashMap} (class x)))
