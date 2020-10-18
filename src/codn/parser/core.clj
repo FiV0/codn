@@ -4,7 +4,8 @@
   (:refer-clojure :exclude [read read-line read-string char
                             default-data-readers *default-data-reader-fn*
                             *read-eval* *data-readers*])
-  (:require [codn.parser.reader-types :refer :all]
+  (:require [clojure.tools.reader.reader-types :refer :all]
+            [clojure.tools.reader.impl.errors :as err]
             [codn.parser.utils :refer :all]
             [codn.parser.commons :refer :all])
   (:import (clojure.lang PersistentHashSet IMeta
@@ -36,7 +37,7 @@
 (defn- ^String read-token
   [rdr initch]
   (if-not initch
-    (reader-error rdr "EOF while reading")
+    (err/reader-error rdr "EOF while reading")
     (loop [sb (doto (StringBuilder.) (.append initch))
            ch (read-char rdr)]
       (if (or (whitespace? ch)
@@ -55,12 +56,12 @@
       (dm rdr ch)
       (if-let [obj (read-tagged (doto rdr (unread ch)) ch)] ;; ctor reader is implemented as a taggged literal
         obj
-        (reader-error rdr "No dispatch macro for " ch)))
-    (reader-error rdr "EOF while reading character")))
+        (err/reader-error rdr "No dispatch macro for " ch)))
+    (err/reader-error rdr "EOF while reading character")))
 
 (defn- read-unmatched-delimiter
   [rdr ch]
-  (reader-error rdr "Unmatched delimiter " ch))
+  (err/reader-error rdr "Unmatched delimiter " ch))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; readers
@@ -125,7 +126,7 @@
                       ic (int c)]
                   (if (and (> ic upper-limit)
                            (< ic lower-limit))
-                    (reader-error rdr "Invalid character constant: \\u" (Integer/toString ic 16))
+                    (err/reader-error rdr "Invalid character constant: \\u" (Integer/toString ic 16))
                     c))
 
                 (.startsWith token "x")
@@ -134,16 +135,16 @@
                 (.startsWith token "o")
                 (let [len (dec token-len)]
                   (if (> len 3)
-                    (reader-error rdr "Invalid octal escape sequence length: " len)
+                    (err/reader-error rdr "Invalid octal escape sequence length: " len)
                     (let [uc (read-unicode-char token 1 len 8)]
                       (if (> (int uc) 0377)
-                        (reader-error rdr "Octal escape sequence must be in range [0, 377]")
+                        (err/reader-error rdr "Octal escape sequence must be in range [0, 377]")
                         uc))))
 
-                :else (reader-error rdr "Unsupported character: \\" token))]
+                :else (err/reader-error rdr "Unsupported character: \\" token))]
           {:head :character :value result}
           ))
-      (reader-error rdr "EOF while reading character"))))
+      (err/reader-error rdr "EOF while reading character"))))
 
 (defn- ^PersistentVector read-delimited
   [delim rdr recursive?]
@@ -159,9 +160,9 @@
               (recur (if-not (identical? mret rdr) (conj! a mret) a)))
             (let [o (parse (doto rdr (unread ch)) true nil recursive?)]
               (recur (if-not (identical? o rdr) (conj! a o) a)))))
-        (reader-error rdr "EOF while reading"
-                      (when first-line
-                        (str ", starting at line" first-line)))))))
+        (err/reader-error rdr "EOF while reading"
+                          (when first-line
+                            (str ", starting at line" first-line)))))))
 
 (defn- read-list
   [rdr _]
@@ -191,7 +192,7 @@
         the-map (read-delimited \} rdr true)
         map-count (count the-map)]
     (when (odd? map-count)
-      (reader-error rdr "Map literal must contain an even number of forms"))
+      (err/reader-error rdr "Map literal must contain an even number of forms"))
     (with-meta
       (if (zero? map-count)
         {:head :map :body []}
@@ -214,7 +215,7 @@
               (integer? n) {:head :integer :value n}
               (ratio? n) {:head :ratio :body [{:head :integer :value (numerator n)} {:head :integer :value (denominator n)}]}
               )
-            (reader-error reader "Invalid number format [" s "]"))))
+            (err/reader-error reader "Invalid number format [" s "]"))))
       (recur (doto sb (.append ch)) (read-char reader)))))
 
 (defn- escape-char [sb rdr]
@@ -229,25 +230,25 @@
       \f "\f"
       \u (let [ch (read-char rdr)]
            (if (== -1 (Character/digit (int ch) 16))
-             (reader-error rdr "Invalid unicode escape: \\u" ch)
+             (err/reader-error rdr "Invalid unicode escape: \\u" ch)
              (read-unicode-char rdr ch 16 4 true)))
       \x (let [ch (read-char rdr)]
            (if (== -1 (Character/digit (int ch) 16))
-             (reader-error rdr "Invalid unicode escape: \\x" ch)
+             (err/reader-error rdr "Invalid unicode escape: \\x" ch)
              (read-unicode-char rdr ch 16 2 true)))
       (if (numeric? ch)
         (let [ch (read-unicode-char rdr ch 8 3 false)]
           (if (> (int ch) 0337)
-            (reader-error rdr "Octal escape sequence must be in range [0, 377]")
+            (err/reader-error rdr "Octal escape sequence must be in range [0, 377]")
             ch))
-        (reader-error rdr "Unsupported escape character: \\" ch)))))
+        (err/reader-error rdr "Unsupported escape character: \\" ch)))))
 
 (defn- read-string*
   [reader _]
   (loop [sb (StringBuilder.)
          ch (read-char reader)]
     (case ch
-      nil (reader-error reader "EOF while reading string")
+      nil (err/reader-error reader "EOF while reading string")
       \\ (recur (doto sb (.append (escape-char sb reader)))
                 (read-char reader))
       \" {:head :string :value (str sb)}
@@ -269,7 +270,7 @@
               (with-meta {:head :symbol :value (symbol (p 0) (p 1))}
                 (when line
                   {:line line :column column})))
-            (reader-error rdr "Invalid token: " token))))))
+            (err/reader-error rdr "Invalid token: " token))))))
 
 (defn- resolve-ns [sym]
   (or ((ns-aliases *ns*) sym)
@@ -290,8 +291,8 @@
                 {:head :autoresolved-keyword :body [{:head :keyword :value (keyword (subs ns 1) name)}] }
                 {:head :autoresolved-keyword :body [{:head :keyword :value (keyword  (subs name 1))}]})
               {:head :keyword :value (keyword ns name)}))
-          (reader-error reader "Invalid token: :" token)))
-      (reader-error reader "Invalid token: :"))))
+          (err/reader-error reader "Invalid token: :" token)))
+      (err/reader-error reader "Invalid token: :"))))
 
 (defn- wrapping-reader
   [sym]
@@ -304,7 +305,7 @@
                         [(get-line-number rdr) (int (dec (get-column-number rdr)))])
         m (desugar-meta (parse rdr true nil true))]
     (when-not (map? m)
-      (reader-error rdr "Metadata must be Symbol, Keyword, String or Map"))
+      (err/reader-error rdr "Metadata must be Symbol, Keyword, String or Map"))
     (let [o (parse rdr true nil true)]
       (if (instance? IMeta o)
         (let [m (if (and line
@@ -335,7 +336,7 @@
       Inf  {:head :positive-infinity :value Double/POSITIVE_INFINITY}
       -Inf {:head :negative-infinity :value Double/NEGATIVE_INFINITY}
       NaN {:head :NaN :value Double/NaN}
-      (reader-error rdr (str "Invalid token: ##" value)))))
+      (err/reader-error rdr (str "Invalid token: ##" value)))))
 
 (defn- read-cond
   [rdr _]
@@ -355,8 +356,8 @@
           ;;     (reader-conditional (read-list rdr ch opts pending-forms) splicing)
           ;;     (read-cond-delimited rdr splicing opts pending-forms)))
           {:head :reader-conditional :body (read-list rdr ch) :splicing? splicing})
-        (reader-error rdr "Unexpected EOF while reading character.")))
-    (reader-error rdr "Unexpected EOF while reading character.")))
+        (err/reader-error rdr "Unexpected EOF while reading character.")))
+    (err/reader-error rdr "Unexpected EOF while reading character.")))
 
 (def ^:private ^:dynamic arg-env)
 
@@ -399,11 +400,11 @@
         (if (identical? ch \{)
           (let [items (read-delimited \} rdr true)]
             (when (odd? (count items))
-              (reader-error "Map literals must contain an even number of forms."))
+              (err/reader-error "Map literals must contain an even number of forms."))
             {:head :namespaced-map
              :body (into [{:head :symbol :value ns}] items)})
-          (reader-error (str "Namespaced map with namespace " token " does not specify a map."))))
-      (reader-error (str "Namespaced map with namespace " token " does not specify a map.")))))
+          (err/reader-error (str "Namespaced map with namespace " token " does not specify a map."))))
+      (err/reader-error (str "Namespaced map with namespace " token " does not specify a map.")))))
 
 
 (defn- macros [ch]
@@ -433,13 +434,13 @@
       (if (identical? \" ch)
         {:head :regex :body [(str sb)]}
         (if (nil? ch)
-          (reader-error rdr "EOF while reading regex")
+          (err/reader-error rdr "EOF while reading regex")
           (do
             (.append sb ch )
             (when (identical? \\ ch)
               (let [ch (read-char rdr)]
                 (when (nil? ch)
-                  (reader-error rdr "EOF while reading regex"))
+                  (err/reader-error rdr "EOF while reading regex"))
                 (.append sb ch)))
             (recur (read-char rdr))))))))
 
@@ -462,7 +463,7 @@
 (defn- read-tagged [rdr initch]
   (let [tag (parse rdr true nil false)]
     (when-not (symbol? (:value tag))
-      (reader-error rdr "Reader tag must be a symbol"))
+      (err/reader-error rdr "Reader tag must be a symbol"))
     (if (.contains (name (:value tag)) ".")
       {:head :constructor :body [tag (parse rdr true nil true)]}
       {:head :tagged-literal :body [tag (parse rdr true nil true)]})))
@@ -483,7 +484,7 @@
      (let [ch (read-char reader)]
        (cond
          (whitespace? ch) (parse reader eof-error? sentinel recursive?)
-         (nil? ch) (if eof-error? (reader-error reader "EOF") sentinel)
+         (nil? ch) (if eof-error? (err/reader-error reader "EOF") sentinel)
          (number-literal? reader ch) (read-number reader ch)
          (comment-prefix? ch) (parse (read-comment reader ch) eof-error? sentinel recursive?)
          :else (let [f (macros ch)]

@@ -1,10 +1,11 @@
 (ns codn.parser.commons
   (:refer-clojure :exclude [char read-line])
-  (:use codn.parser.reader-types
-        codn.parser.utils)
+  (:require [clojure.tools.reader.impl.errors :as err]
+            [clojure.tools.reader.reader-types :refer :all]
+            [codn.parser.utils :refer :all])
   (:import (clojure.lang BigInt Numbers)
-           (java.util regex.Pattern regex.Matcher)
-           java.lang.reflect.Constructor))
+           java.lang.reflect.Constructor
+           (java.util regex.Pattern regex.Matcher)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; helpers
@@ -116,7 +117,7 @@
 (defn throwing-reader
   [msg]
   (fn [rdr & _]
-    (reader-error rdr msg)))
+    (err/reader-error rdr msg)))
 
 (defn read-regex
   [rdr ch]
@@ -125,12 +126,12 @@
       (if (identical? \" ch)
         (Pattern/compile (str sb))
         (if (nil? ch)
-          (reader-error rdr "EOF while reading regex")
+          (err/reader-error rdr "EOF while reading regex")
           (do
             (.append sb ch )
             (when (identical? \\ ch)
               (let [ch (read-char rdr)]
-                (if (nil? ch)
-                  (reader-error rdr "EOF while reading regex"))
+                (when(nil? ch)
+                  (err/reader-error rdr "EOF while reading regex"))
                 (.append sb ch)))
             (recur (read-char rdr))))))))

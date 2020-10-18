@@ -1,20 +1,11 @@
 (ns codn.reader.core
   (:refer-clojure :exclude [read read-line read-string char])
-  (:require [codn.parser.utils :as utils])
+  (:require [clojure.tools.reader.impl.errors :as err]
+            [codn.parser.utils :as utils])
   (:import (clojure.lang PersistentHashSet IMeta
                          RT Symbol Reflector Var IObj
                          PersistentVector IRecord Namespace)
            java.lang.reflect.Constructor))
-
-(defn reader-error
-  "Throws an ExceptionInfo with the given message."
-  [msg]
-  (throw (ex-info (apply str msg)
-                  (merge {:type :codn-reader-exception}
-                         ;; (when (indexing-reader? rdr)
-                         ;;   {:line (get-line-number rdr)
-                         ;;    :column (get-column-number rdr)})
-                         ))))
 
 (defn- resolve-ns [sym]
   (or ((ns-aliases *ns*) sym)
@@ -188,8 +179,7 @@
           :short
           (loop [i 0]
             (if (>= i ctors-num)
-              (reader-error (str "Unexpected number of constructor arguments to " (str class)
-                                 ": got" numargs))
+              (err/reader-error "Unexpected number of constructor arguments to " (str class) ": got" numargs)
               (if (== (count (.getParameterTypes ^Constructor (aget all-ctors i)))
                       numargs)
                 (Reflector/invokeConstructor class (to-array entries))
@@ -199,10 +189,10 @@
             (loop [s (keys vals)]
               (when s
                 (if-not (keyword? (first s))
-                  (reader-error "Unreadable ctor form: key must be of type clojure.lang.Keyword")
+                  (err/reader-error "Unreadable ctor form: key must be of type clojure.lang.Keyword")
                   (recur (next s)))))
             (Reflector/invokeStaticMethod class "create" (object-array [vals])))))
-      (reader-error "Invalid reader constructor form"))))
+      (err/reader-error "Invalid reader constructor form"))))
 
 (defn read-autoresolved-keyword [kw]
   (if (namespace kw)
